@@ -71,14 +71,16 @@ WSGI_APPLICATION = 'shopping.wsgi.application'
 
 
 # Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
-        conn_max_age=600
+        conn_max_age=600,
+        engine='django_tidb.tidb' if os.environ.get('DATABASE_URL', '').startswith('mysql') else None
     )
 }
+
 
 
 # Password validation
