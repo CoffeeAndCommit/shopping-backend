@@ -91,7 +91,8 @@ DATABASES = {
 # Explicitly set the engine for TiDB/MySQL
 if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql' or \
    os.environ.get('DATABASE_URL', '').startswith('mysql'):
-    DATABASES['default']['ENGINE'] = 'django_tidb.tidb'
+    DATABASES['default']['ENGINE'] = 'django_tidb'
+
 
 
 
