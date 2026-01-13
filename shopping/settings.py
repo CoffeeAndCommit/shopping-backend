@@ -1,4 +1,5 @@
 import os
+import sys
 import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
@@ -6,11 +7,13 @@ from dotenv import load_dotenv
 # Use pymysql as MySQLdb for compatibility with TiDB and easier deployment
 try:
     import pymysql
+    pymysql.version_info = (2, 2, 7, "final", 0)
     pymysql.install_as_MySQLdb()
 except ImportError:
     pass
 
 load_dotenv()
+
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -78,20 +81,52 @@ TEMPLATES = [
 WSGI_APPLICATION = 'shopping.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+# -------------------- Database --------------------
 DATABASES = {
-    'default': dj_database_url.config(
-        default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
-        conn_max_age=600,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv("DB_NAME", ""),
+        'USER': os.getenv("DB_USER", ""),
+        'PASSWORD': os.getenv("DB_PASSWORD", ""),
+        'HOST': os.getenv("DB_HOST", "localhost"),
+        'PORT': os.getenv("DB_PORT", "3306"),
+    }
 }
 
-# Explicitly set the engine for TiDB/MySQL
-if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql' or \
-   os.environ.get('DATABASE_URL', '').startswith('mysql'):
+# Update database from DATABASE_URL
+db_from_env = dj_database_url.config(
+    default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
+    conn_max_age=500
+)
+DATABASES['default'].update(db_from_env)
+
+# FORCE django_tidb engine only for TiDB / Render
+db_host = DATABASES['default'].get('HOST', '')
+if os.environ.get('RENDER') or (db_host and 'tidbcloud.com' in db_host):
     DATABASES['default']['ENGINE'] = 'django_tidb'
+
+# Only add MySQL options if using MySQL/TiDB engine
+if DATABASES['default']['ENGINE'] in ['django.db.backends.mysql', 'django_tidb']:
+    DATABASES['default'].setdefault('OPTIONS', {})
+    DATABASES['default']['OPTIONS'].update({
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    })
+
+# SSL Fixes and configuration for Render / TiDB
+if os.environ.get('RENDER') or (db_host and 'tidbcloud.com' in db_host):
+    if 'ssl-mode' in DATABASES['default'].get('OPTIONS', {}):
+        del DATABASES['default']['OPTIONS']['ssl-mode']
+
+    is_pymysql_active = 'pymysql' in sys.modules
+    DATABASES['default'].setdefault('OPTIONS', {})
+    
+    if is_pymysql_active:
+        DATABASES['default']['OPTIONS']['ssl'] = {'ssl_mode': 'REQUIRED'}
+    else:
+        DATABASES['default']['OPTIONS']['ssl_mode'] = 'REQUIRED'
+        DATABASES['default']['OPTIONS']['ssl'] = {}
+
 
 
 
