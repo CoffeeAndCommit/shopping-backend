@@ -2,8 +2,10 @@ services:
   - type: web
     name: shopping-backend
     runtime: python
+    plan: free
     buildCommand: "./render-build.sh"
     startCommand: "gunicorn shopping.wsgi:application"
+
     envVars:
       - key: PYTHON_VERSION
         value: 3.13.1
