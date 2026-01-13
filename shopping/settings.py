@@ -3,7 +3,15 @@ import dj_database_url
 from pathlib import Path
 from dotenv import load_dotenv
 
+# Use pymysql as MySQLdb for compatibility with TiDB and easier deployment
+try:
+    import pymysql
+    pymysql.install_as_MySQLdb()
+except ImportError:
+    pass
+
 load_dotenv()
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -71,15 +79,20 @@ WSGI_APPLICATION = 'shopping.wsgi.application'
 
 
 # Database
-# # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
+# https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
     'default': dj_database_url.config(
         default=f'sqlite:///{BASE_DIR / "db.sqlite3"}',
         conn_max_age=600,
-        engine='django_tidb.tidb' if os.environ.get('DATABASE_URL', '').startswith('mysql') else None
     )
 }
+
+# Explicitly set the engine for TiDB/MySQL
+if DATABASES['default'].get('ENGINE') == 'django.db.backends.mysql' or \
+   os.environ.get('DATABASE_URL', '').startswith('mysql'):
+    DATABASES['default']['ENGINE'] = 'django_tidb.tidb'
+
 
 
 
